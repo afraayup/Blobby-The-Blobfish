@@ -1,0 +1,22 @@
+#myCanvas {
+    background-color: aqua;
+}
+
+h1, h2 {
+    color: salmon;
+    text-align: center;
+}
+
+#container {
+    width: 80%;
+    margin: auto;
+    text-align: center;
+}
+
+#button {
+    align-self: center;
+}
+
+#score, #lives, #instructions {
+    font-weight: bold;
+}

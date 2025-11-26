@@ -1,0 +1,1107 @@
+console.log("Assignment 4: Blobby the Blobfish")
+
+/************************** GLOBAL VARIABLES *****************************/
+var canvas;
+var ctx;
+var w = 1000;
+var h = 600;
+var colours = [0, 60, 120, 180, 240, 300];
+var oneDegree = 2*Math.PI/360;
+
+var jelly1 = { // trial object for jellyfish
+    x: w/2, 
+    y: h/2,
+    r: 50,
+    lw: 10,
+    c: 30, 
+    a: 1,
+    squiggles: 4,
+    flip: 1,
+    angle: 0,
+    change: {
+        x: Math.cos(oneDegree), 
+        y: Math.sin(oneDegree), 
+        lw: 0,
+        r: 0, 
+        c: 0, 
+        a: 0,
+        squiggles: 0,
+        flip: -1,
+        angle: 1
+    }
+}
+
+var sea1 = { // trial object for sea urchin
+    x: rand(w),
+    y: 0,
+    r: 25,
+    w: 50,
+    h: 50,
+    c: rand(360),
+    a: 1,
+    tentacles: 20 + randi(30),
+    change: {
+        x: 0,
+        y: 1,
+        r: randn(10),
+        a: 0,
+        tentacles: randi(10)
+    }
+}
+
+// Blobby the Blobfish
+var blob1 = {
+    x: w/2,
+    y: 500,
+    w: 250,
+    h: 150,
+    r: 75,
+    c: 340,
+    a: 1,
+    sad: true,
+    flap: 0,
+    change: {
+        x: randn(20),
+        y: randn(20),
+        r: 0,
+        flap: 1,
+        sad: false
+    }
+}
+
+// arrays to push & store objects
+var allJellies = [];
+var allSeaUrchins = [];
+var allShapes = [];
+
+// counters
+var score = 0;
+var lives = 3;
+
+/***************************** CODE EXECUTION *******************************/
+
+// user interaction event handlers
+document.onkeydown = moveBlob; // moves blobfish left & right when left & right arrow keys are pressed
+document.querySelector("#myCanvas").onclick = captureJelly; // captures jellyfish & increases lives when mouse is clicked on jellyfish
+document.getElementById("button").onclick = restart; // button to restart game
+
+// set up & main animation
+setUpCanvas();
+animationLoop();
+
+/******************************* FUNCTIONS **********************************/
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ANIMATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function animationLoop() {
+    // clear the canvas and update score & lives
+    clear();
+    document.getElementById("score").innerHTML = "Score: " + scoreCounter().getCurrentScore();
+    document.getElementById("lives").innerHTML = "Lives Remaining: " + livesCounter().getCurrentLives();
+
+    // draw sandy ground
+    ctx.rect(0, 500, 1000, 100);
+    ctx.fillStyle = "wheat";
+    ctx.fill();
+
+    // draw & update blobfish;
+    blobfish(blob1);
+    updateBlobfish(blob1);
+
+    // draw & update sea urchins
+    for (var i = 0; i < allSeaUrchins.length; i++) {
+        seaUrchin(allSeaUrchins[i]);
+        updateSeaUrchins(allSeaUrchins[i]);
+        blobEat(blob1, allSeaUrchins);
+        //deleteSeaUrchins(allSeaUrchins[i], allSeaUrchins);
+    }
+
+    // draw & update jellyfishes
+    for (let j = 0; j < allJellies.length; j++) {
+        jellyfish(allJellies[j]);
+        updateJellies(allJellies[j]);
+        blobDie(blob1, allJellies);
+        //deleteJellies(allJellies[j], allJellies);
+    }
+
+    // Continue animation if lives > 0. Stop animation if lives = 0 and show Game Over screen
+    if (livesCounter().getCurrentLives() > 0) {
+        requestAnimationFrame(animationLoop);
+    }
+    else {
+        clear();
+        document.getElementById("score").innerHTML = "Score: " + scoreCounter().getCurrentScore();
+        document.getElementById("lives").innerHTML = "Lives Remaining: " + livesCounter().getCurrentLives();
+        ctx.font = "100px Courier";
+        ctx.fillStyle = "salmon";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", w/2, h/2);
+        ctx.font = "50px Courier";
+        ctx.fillText("Final Score: " + scoreCounter().getCurrentScore(), w/2, h/2 + 50);
+    }
+}
+
+// interval for creating sea urchins, every 3 seconds and if the random # chosen is odd
+var intervalSeaUrchins = setInterval(function() {
+    clear();
+    var seaUrchinNum = randi(10);
+    console.log(seaUrchinNum);
+    if(seaUrchinNum%2 == 1) {
+        createSeaUrchins(allSeaUrchins, 1);
+        //allShapes.push(allSeaUrchins[allSeaUrchins.length-1]);
+        console.log(allSeaUrchins);
+    }
+}, 3000)
+
+// interval for creating jellyfishes, every 10 seconds and if the random # chosen is even
+var intervalJellies = setInterval(function() {
+    clear();
+    var jellyNum = randi(5);
+    console.log(jellyNum);
+    if(jellyNum%2 == 0) {
+        createJellies(allJellies, 1);
+        //allShapes.push(allJellies[allJellies.length-1]);
+        console.log(allJellies);
+    }
+}, 10000)
+
+// interval for flipping jellyfish's tentacles
+var flipInterval = setInterval(function() {
+    for (var i = 0; i < allJellies.length; i++) {
+        allJellies[i].flip *= allJellies[i].change.flip;
+    }
+}, 1000);
+
+// ~~~~~~~~~~~~~~~~~~~~~~~ EVENT HANDLERS / USER INTERACTION ~~~~~~~~~~~~~~~~~~~~~~~
+// handles keyboard events. moves blobfish left & right according to left & right arrow keys. Also changes Blobby's state with spacebar
+function moveBlob(e) {
+    if(e.key =="ArrowLeft") {
+        blob1.x -= 20;
+    }
+    else if(e.key =="ArrowRight") {
+        blob1.x += 20;
+    }
+
+    if(e.key == " ") {
+        blob1.sad = !blob1.sad;
+    }
+
+    //console.log("keydown", e);
+}
+
+// handles mouse click events. if the mouse click is within the radius of a jellyfish, the jellyfish is captured and removed from the canvas.
+function captureJelly(event) {
+    // console.log("clicked: " + event.offsetX + " " + event.offsetY);
+    
+    for (var i = 0; i < allJellies.length; i++) {
+        if (event.offsetX < (allJellies[i].x + allJellies[i].r) && event.offsetX > (allJellies[i].x - allJellies[i].r) && event.offsetY < (allJellies[i].y + allJellies[i].r) && event.offsetY > (allJellies[i].y - allJellies[i].r)) {
+            var index = allJellies.indexOf(allJellies[i]);
+            allJellies.splice(index, 1);
+            // console.log(allJellies, index);
+            livesCounter().increment();
+        }
+    }
+}
+
+// button handler for restarting the game
+function restart() {
+    allJellies = [];
+    allSeaUrchins = [];
+    blob1.x = w/2;
+    blob1.y = 500;
+    blob1.a = 1;
+    blob1.sad = true;
+    score = 0;
+    lives = 3;
+    animationLoop();
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ COUNTERS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// score counter. implementing module pattern with increment & getCurrentScore functions
+function scoreCounter() {
+
+    return{
+        increment: increment,
+        getCurrentScore: getCurrentScore
+    }
+
+    function increment() {
+        score++;
+        blob1.sad = false;
+    }
+
+    function getCurrentScore() {
+        return score
+    }
+}
+
+// lives counter. implementing module pattern with increment, decrement & getCurrentLives functions
+function livesCounter() {
+
+    return{
+        decrement: decrement,
+        increment: increment,
+        getCurrentLives: getCurrentLives
+    }
+
+    function decrement() {
+        lives--;
+        blob1.a -= 0.25;
+        blob1.sad = true;
+    }
+
+    function increment() {
+        lives++;
+        blob1.a += 0.25;
+        blob1.sad = false;
+    }
+
+    function getCurrentLives() {
+        return lives;
+    }
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ COLLISION DETECTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// detects if a sea urchin and Blobby have collided
+function blobEat(o, array) {
+    for (var i = 0; i< array.length; i++) {
+        if(o != array[i]) {
+            ate(o, array[i]);
+        }
+    }
+}
+
+// if collision detected, sea urchin is eaten (removed from allSeaUrchins array) and score is incremented
+function ate(o1, o2) {
+    var differenceX = Math.abs(o1.x - o2.x);
+    var differenceY = Math.abs(o1.y - o2.y);
+    var hdif = Math.sqrt(differenceX*differenceX + differenceY*differenceY);
+
+    var index;
+    if(hdif < o1.r+o2.r) {
+        if(differenceX < differenceY) {
+            index = allSeaUrchins.indexOf(o2);
+            allSeaUrchins.splice(index, 1);
+            scoreCounter().increment();
+            // console.log(scoreCounter().getCurrentScore());
+        }
+    }
+}
+
+// detects if a jellyfish and Blobby have collided
+function blobDie(o, array) {
+    for (var i = 0; i< array.length; i++) {
+        if(o != array[i]) {
+            die(o, array[i]);
+        }
+    }
+}
+
+// if collision detected, jellyfish is eaten (removed from allJellies array) and lives is decremented
+function die(o1, o2) {
+    var differenceX = Math.abs(o1.x - o2.x);
+    var differenceY = Math.abs(o1.y - o2.y);
+    var hdif = Math.sqrt(differenceX*differenceX + differenceY*differenceY);
+
+    var index;
+    if(hdif < o1.r+o2.r) {
+        if(differenceX < differenceY) {
+            index = allJellies.indexOf(o2);
+            allJellies.splice(index, 1);
+            livesCounter().decrement();
+            // console.log(livesCounter().getCurrentLives());
+        }
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~~~ OBJECT CREATION & DATA MANIPULATION ~~~~~~~~~~~~~~~~~~~~~~~~~~
+// update Blobby's position and flaps
+function updateBlobfish(o) {
+    if (o.x > w) {
+        o.x = 0;
+    }
+    else if (o.x < 0) {
+        o.x = w;
+    }
+
+    if(o.flap < 0 || o.flap > (2/6)*o.h) {
+        o.change.flap *= -1;
+    }
+    
+    o.flap += o.change.flap;
+}
+
+// create sea urchins
+function createSeaUrchins(arr, num) {
+    for(var i = 0; i < num; i++) {
+        arr.push({
+            x: rand(w),
+            y: 0,
+            r: 25,
+            w: 50,
+            h: 50,
+            c: rand(360),
+            a: 1,
+            tentacles: 20 + randi(30),
+            change: {
+                x: 0,
+                y: 1 + rand(5),
+                r: 0,
+                a: 0,
+                tentacles: randi(10)
+            }
+        });
+    }
+}
+
+// update sea urchins' properties
+function updateSeaUrchins(o) {
+    o.x += o.change.x;
+    o.y += o.change.y;
+    o.r += o.change.r;
+    o.a -= o.change.a;
+    torus(o);
+}
+
+// delete sea urchins if they are not visible
+function deleteSeaUrchins(o, arr) {
+    var index;
+    if (o.a < 0 || o.r < 0) {
+        index = arr.indexOf(o);
+        arr.splice(index, 1);
+        console.log(arr, index);
+    }
+}
+
+// create jellyfishes 
+function createJellies(arr, num) {
+    for(var i = 0; i < num; i++) {
+        arr.push({
+            x: rand(w), //- circleRadius*Math.cos((360/num*i)*oneDegree), 
+            y: rand(h), //- circleRadius*Math.sin((360/num*i)*oneDegree),
+            r: 50,
+            lw: 10,
+            c: rand(360), 
+            a: 1,
+            squiggles: 4,
+            flip: 1,
+            angle: (360/num*i)*oneDegree,
+            position: i,
+            change: {
+                x: randn(6), 
+                y: randn(6), 
+                lw: 0,
+                r: 0, 
+                c: randn(10), 
+                a: 0.001 + rand(0.002),
+                squiggles: randi(4),
+                flip: -1,
+                angle: oneDegree,
+                position: 0
+            }
+        });
+    }
+}
+
+// update jellyfishes' properties
+function updateJellies(o) {
+    o.angle += o.change.angle;
+    o.x += o.change.x;
+    o.y += o.change.y;
+    //o.r += o.change.r;
+    //o.a -= o.change.a;
+
+    bounce(o);
+}
+
+// delete jellyfishes if they are not visible
+function deleteJellies(o, arr) {
+    var index;
+    if (o.a < 0 || o.r < 0) {
+        index = arr.indexOf(o);
+        arr.splice(index, 1);
+        console.log(arr, index);
+    }
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SHAPE DRAWERS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function blobfish(o) {
+    var lw = 2;
+    var outline = "hsla("+o.c+", 100%, 50%, "+o.a+")";
+    var fill = "hsla("+o.c+", 100%, 90%, "+o.a+")";
+    var mouthFill = "hsla("+o.c+", 100%, 70%, "+o.a+")";
+    var features = "hsla("+o.c+", 100%, 0%, "+o.a+")"
+    
+    //body
+    ctx.beginPath();
+    ctx.moveTo(o.x - (4/12)*o.w, o.y);
+    ctx.quadraticCurveTo(o.x,                   o.y - (5/6)*o.h,    o.x + (4/12)*o.w,       o.y);
+    ctx.quadraticCurveTo(o.x + (5.5/12)*o.w,    o.y + (2.5/6)*o.h,  o.x + (3.5/12)*o.w,     o.y + (2/6)*o.h);
+    ctx.quadraticCurveTo(o.x,                   o.y + (0.5/6)*o.h,  o.x - (3.5/12)*o.w,     o.y + (2/6)*o.h);
+    ctx.quadraticCurveTo(o.x - (5.5/12)*o.w,    o.y + (2.5/6)*o.h,  o.x - (4/12)*o.w,       o.y);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = lw*2;
+    ctx.strokeStyle = outline;
+    ctx.stroke();
+
+    //eyes
+    var r = (0.1/12)*o.w;
+    if (r < 2) r = 2;
+    ctx.beginPath()
+    ctx.arc(o.x + (2/12)*o.w, o.y - (1/6)*o.h, r, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.fillStyle = features;
+    ctx.fill();
+    ctx.beginPath()
+    ctx.arc(o.x - (2/12)*o.w, o.y - (1/6)*o.h, r, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.fillStyle = features;
+    ctx.fill();
+
+    //mouth
+    var mouthY = 0;
+    var mCPY = 1;
+
+    if (o.sad) {
+        mouthY = (1/6)*o.h;
+        mCPY *= -1;
+        //o.flap = (2/6)*o.h;
+    }
+        
+    ctx.beginPath();
+    ctx.moveTo          (o.x - (2/12)*o.w,      o.y + mouthY - (0.25/6)*o.h * mCPY);
+    ctx.quadraticCurveTo(o.x,                   o.y + mouthY + (1.5/6)*o.h * mCPY,      o.x + (2/12)*o.w,       o.y - (0.25/6)*o.h * mCPY + mouthY);
+    ctx.quadraticCurveTo(o.x + (2.25/12)*o.w,   o.y + mouthY - (0.25/6)*o.h * mCPY,     o.x + (2.25/12)*o.w,    o.y + mouthY);
+    ctx.quadraticCurveTo(o.x,                   o.y + mouthY + (2/6)*o.h * mCPY,        o.x - (2.25/12)*o.w,    o.y + mouthY);
+    ctx.quadraticCurveTo(o.x - (2.25/12)*o.w,   o.y + mouthY - (0.25/6)*o.h * mCPY,     o.x - (2/12)*o.w,       o.y - (0.25/6)*o.h * mCPY + mouthY);
+    ctx.closePath();
+    ctx.lineWidth = lw;
+    ctx.strokeStyle = outline;
+    ctx.stroke();
+    ctx.fillStyle = mouthFill;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo          (o.x - (2/12)*o.w,      o.y + mouthY);
+    ctx.quadraticCurveTo(o.x,                   o.y + (1.75/6)*o.h * mCPY + mouthY,     o.x + (2/12)*o.w,       o.y + mouthY);
+    ctx.lineWidth = lw*2;
+    ctx.strokeStyle = features;
+    ctx.stroke();
+    ctx.closePath();
+
+    //flaps
+    ctx.beginPath();
+    ctx.moveTo          (o.x + (3.5/12)*o.w,    o.y + (0.5/6)*o.h);
+    ctx.quadraticCurveTo(o.x + (8/12)*o.w,      o.y + o.flap,    o.x + (3.5/12)*o.w,     o.y + (1.5/6)*o.h);
+    ctx.lineWidth = lw*3;
+    ctx.strokeStyle = outline;
+    ctx.stroke();
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo          (o.x - (3.5/12)*o.w,    o.y + (0.5/6)*o.h);
+    ctx.quadraticCurveTo(o.x - (8/12)*o.w,      o.y + o.flap,    o.x - (3.5/12)*o.w,     o.y + (1.5/6)*o.h);
+    ctx.lineWidth = lw*3;
+    ctx.strokeStyle = outline;
+    ctx.stroke();
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+    //nose
+    ctx.beginPath();
+    ctx.arc(o.x, o.y - (0.5/6)*o.h, (1.25/6)*o.h, -Math.PI/6, 7*Math.PI/6);
+    ctx.lineWidth = lw*2;
+    ctx.strokeStyle = outline;
+    ctx.stroke();
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+}
+
+function seaUrchin(o) {
+    // body
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, o.r, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "hsla("+o.c+", 100%, 25%, "+o.a+")";
+    ctx.stroke();
+    ctx.fillStyle = "hsla("+o.c+", 100%, 50%, "+o.a+")";
+    ctx.fill();
+
+    // tentacles
+    for (var i = 0; i < o.tentacles; i++) {
+        var angle = (360/o.tentacles)*i;
+        ctx.beginPath();
+        ctx.moveTo(o.x + 0.5*o.r*Math.cos(angle*oneDegree), o.y + 0.5*o.r*Math.sin(angle*oneDegree));
+        ctx.lineTo(o.x + (o.r + 20 + rand(30))*Math.cos(angle*oneDegree), o.y + (o.r + 20 + rand(30))*Math.sin(angle*oneDegree));
+        ctx.closePath();
+        ctx.strokeStyle = "hsla("+o.c+", 100%, 25%, "+o.a+")";
+        ctx.stroke();
+    }
+}
+
+function jellyfish(o) {
+    // body
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, o.r, 0, Math.PI, true);
+    ctx.closePath();
+    ctx.fillStyle = "hsla("+o.c+", 100%, 80%, "+o.a+")";
+    ctx.fill();
+    
+    //legs
+    var num = Math.floor(o.r/o.lw);
+    var space = (o.r - num*o.lw) / (num - 1);
+
+    var startX = o.x - o.r;
+    var shiftX = 2*o.lw + space;
+    var point = startX + shiftX;
+    var cpX;
+    var cpYstart = o.y + o.r/8;
+
+    //tentacles
+    for (var i = 0; i < num; i++){
+        
+        if (point >= o.x + o.r - o.lw) {break};
+
+        ctx.beginPath();
+        ctx.moveTo(point, o.y);
+        
+        // squiggles
+        for (var j = 0; j < o.squiggles; j++) {
+            if(j%2 == 0) {
+                cpX = o.flip;
+            }
+            else {
+                cpX *= -1;
+            }
+            ctx.quadraticCurveTo(point + cpX*o.r/8, cpYstart + j*o.r/4, point, o.y + (j+1)*o.r/4);
+        }
+        
+        ctx.strokeStyle = "hsla("+o.c+", 100%, 80%, "+o.a+")";
+        ctx.lineWidth = o.lw;
+        ctx.stroke();
+
+        point += shiftX + space;
+    }
+
+}
+
+function lightening(o) {
+
+    ctx.beginPath();
+    ctx.moveTo(o.x + o.w, o.y);
+    ctx.lineTo(o.x, o.y + (15/28)*o.h);
+    ctx.lineTo(o.x + 0.5*o.w, o.y + (15/28)*o.h);
+    ctx.lineTo(o.x, o.y + o.h);
+    ctx.lineTo(o.x + o.w, o.y + (12/28)*o.h);
+    ctx.lineTo(o.x + 0.5*o.w, o.y + (12/28)*o.h);
+    ctx.closePath();
+    
+    ctx.fillStyle = "hsla("+o.c+", 100%, 50%, "+o.a+")";
+    ctx.fill();
+}
+
+function star(o) {
+
+    ctx.beginPath();
+    ctx.moveTo(o.x + o.w/2, o.y); // top, middle
+    ctx.quadraticCurveTo(o.x + o.w/2, o.y + o.h/2, o.x + o.w, o.y + o.h/2); // middle, right
+    ctx.quadraticCurveTo(o.x + o.w/2, o.y + o.h/2, o.x + o.w/2, o.y + o.h); // bottom, middle
+    ctx.quadraticCurveTo(o.x + o.w/2, o.y + o.h/2, o.x, o.y + o.h/2); // middle, left
+    ctx.quadraticCurveTo(o.x + o.w/2, o.y + o.h/2, o.x + o.w/2, o.y); // back to start (top. middle)
+    ctx.closePath();
+
+    ctx.strokeStyle = "hsla("+o.c+", 100%, 50%, "+o.a+")";
+    ctx.stroke();
+
+    ctx.fillStyle = "hsla("+o.c+", 100%, 50%, "+o.a+")";
+}
+
+/***** SETUP & HELPER FUNCTIONS AND VARIABLES *****/
+
+var allCircles = [];
+var o1 = {
+    x: w/4,
+    y: h/4,
+    w: 10,
+    h: 10,
+    r: 50,
+    c: 300,
+    a: 1, 
+    lw: 3,
+    random: 0,
+    angle: 0,
+    speed: 5,
+    boundary: {right: w/4*3, left: w/4, top: h/4, bottom: h/4*3},
+    change: {x: 2, y: 2, r: 0, c: 0, a: 0, speed: 0}
+}
+
+var guide = {
+    x: w/2,
+    y: h/2,
+    w: w/2,
+    h: h/2,
+    r: 50,
+    c: 260,
+    a: 0.5, 
+    lw: 3,
+    random: 0,
+    angle: 0,
+    change: {x: 0, y: 0, r: 0, c: 0, a: 0}
+
+}
+
+var eventStates = {
+    isonClick: false,
+    isSpacebar: false
+}
+
+// ADVANCED TOPICS FUNCTIONS
+var count = 0;
+function counter() {
+
+    return{
+        increment: increment,
+        getCurrentCount: getCurrentCount
+    }
+
+    function increment() {
+        count++
+    }
+
+    function getCurrentCount() {
+        return count
+    }
+}
+
+// COLLISION DETECTION
+function collisionRemove(o1, o2) {
+    var differenceX = Math.abs(o1.x - o2.x);
+    var differenceY = Math.abs(o1.y - o2.y);
+    var hdif = Math.sqrt(differenceX*differenceX + differenceY*differenceY);
+
+    var index;
+    if(hdif < o1.r+o2.r) {
+        if(differenceX < differenceY) {
+            index = allShapes.indexOf(o2);
+            allShapes.splice(index, 1);
+        }
+    }
+}
+
+function collision_all(o, array) {
+    for (var i = 0; i< array.length; i++) {
+        if(o != array[i]) {
+            collisionRemove(o, array[i]);
+            // collision_circle(o, array[i]);
+            // collision_rect(o, array[i]);
+        }
+    }
+}
+
+function collision_circle(o1, o2) {
+    var differenceX = Math.abs(o1.x - o2.x);
+    var differenceY = Math.abs(o1.y - o2.y);
+    var hdif = Math.sqrt(differenceX*differenceX + differenceY*differenceY);
+
+    if (hdif < o1.r+o2.r) {
+        if (differenceX < differenceY) {
+            o1.change.y *= -1;
+            o2.change.y *= -1;
+        }
+        else {
+            o1.change.x *= -1;
+            o2.change.x *= -1;
+        }
+        console.log("potential collision");
+    }
+}
+
+function collision_rect(o1, o2) {
+    var differenceX;
+    var differenceY;
+    if(o1.x+o1.w/2 > o2.x-o2.w/2 && // right side o1 > left side o2
+    o1.x-o1.w/2 < o2.x+o2.w/2 &&    // left side o1 < right sde o2
+    o1.y+o1.h/2 > o2.y-o2.h/2 &&    // bottom o1 > top o2
+    o1.y-o1.h/2 < o2.y+o2.h/2       // top o1 < bottom o2
+    ) {
+        differenceX = Math.abs(o1.x-o2.x);
+        differenceY = Math.abs(o1.y-o2.y);
+        if (differenceX < differenceY) {
+            o1.change.y *= -1;
+            o2.change.y *= -1;
+        }
+        else {
+            o1.change.x *= -1;
+            o2.change.x *= -1;
+        }
+        // stop();
+        console.log("potential collision");
+    }
+}
+
+// EVENTS
+/*
+document.querySelector("#myCanvas").onclick = click;
+
+function click(event) {
+    console.log("clicked: " + event.offsetX + " " + event.offsetY);
+    o1.x = rand(w);
+    o1.y = rand(h);
+    /// code to execute when the canvas has been clicked
+}
+
+document.querySelector("#myCanvas").onmousemove = function(e) {
+    console.log("onmousemove", e, e.offsetX, e.offsetY);
+    /// code to execute when the canvas has been clicked
+}
+
+document.onkeydown = function(e) {
+    console.log("onkeydown", e, e.keyCode, e.key);
+    /// code to execute when the canvas has been clicked
+}
+
+function keydown(e) {
+    if(e.key == " ") {
+        createCircleData(allCircles, 1);
+    }
+    
+    for (var i = 0; i < allCircles.length; i++) {
+        if (e.key == "ArrowUp") {
+            allCircles[i].change.y -= 1;
+            // console.log("up");
+        }
+        else if (e.key == "ArrowDown") {
+            allCircles[i].change.y += 1;
+            // console.log("down");
+        }
+        else if (e.key == "ArrowLeft") {
+            allCircles[i].change.x -= 1;
+            // console.log("left");
+        }
+        else if (e.key == "ArrowRight") {
+            allCircles[i].change.x += 1;
+            // console.log("right");
+        }
+    }
+    console.log("keydown", e);
+}
+*/
+
+// ANIMATION
+/*
+function animationLoop() {
+    clear();
+
+    for (var i = 0; i < allCircles.length; i++) {
+        circle(allCircles[i]);
+        updateData(allCircles[i]);
+        bounce2(allCircles[i]);
+        // deleteData(allCircles[i], allCircles);
+        // console.log(allCircles.length);
+    }
+
+    // rect(guide);
+    // circle(o1);
+    // updateDataKeys(o1);
+    // growingTraceRect(o1);
+    
+    requestAnimationFrame(animationLoop);
+}
+
+var interval = setInterval(function() {
+    clear();
+}, 1000/60);
+
+setTimeout(function() {
+    clearInterval(interval);
+}, 1000);
+*/
+
+// DATA MANIPULATION
+function createCircleData(arr, num) {
+    for(var i = 0; i < num; i++) {
+        arr.push({
+            x: rand(w),
+            y: rand(h),
+            r: 50,
+            c: rand(360),
+            a: 0.75,
+            speed: 50,
+            change: { x: randn(10), y: randn(10), r: 0, c: 0, a: 0, speed: 0}
+        });
+        console.log(arr[i]);
+    }
+}
+
+function createData(arr, num) {
+    for(var i = 0; i < num; i++) {
+        arr.push({
+            x: w/num*i,
+            y: h/2,
+            r: 50,
+            c: rand(360),
+            a: 0.5,
+            lw: 3,
+            random: 0,
+            angle: 0,
+            change: {
+                x: rand(5), 
+                y: rand(5), 
+                r: 0, 
+                c: 0, 
+                a: 0.001 + rand(0.002),
+                lw: 0,
+                random: 0,
+                angle: 0
+            }
+        });
+        console.log(arr[i]);
+    }
+}
+
+function createRandomData(arr, num) {
+    for(var i = 0; i < num; i++) {
+        arr.push({
+            x: rand(w),
+            y: rand(h),
+            r: rand(100),
+            c: rand(360),
+            a: rand(1),
+            lw: 3,
+            random: 0,
+            angle: 0,
+            change: {
+                x: randn(20), 
+                y: randn(20), 
+                r: 0, 
+                c: 0, 
+                a: 0.001 + rand(0.002),
+                lw: 0,
+                random: 0,
+                angle: 0
+            }
+        });
+        console.log(arr[i]);
+    }
+}
+
+function updateData(o) {
+    o.x += o.change.x;
+    o.y += o.change.y;
+    o.r += o.change.r;
+    o.c += o.change.c;
+    o.a -= o.change.a;
+
+    // move(o);
+    // bounce(o);
+    
+    //deleteData(o);
+}
+
+function updateDataKeys(o) {
+    for(keys in o.change) {
+        o[keys] += o.change[keys];
+    }
+    // o.x += o.change.x ; for all othe properties as well.
+    //bounce(o);
+    //torus(o);
+}
+
+function deleteData(o, arr) {
+    var index;
+    if (o.a < 0) {
+        index = arr.indexOf(o);
+        arr.splice(index, 1);
+        console.log(arr, index);
+    }
+}
+
+function circleAnimate(arr) {
+    for (var i = 0; i < arr.length; i++) {
+        circle(arr[i]);
+        updateData(arr[i]);
+        deleteData(arr[i], arr);
+        console.log(arr.length);
+    }
+}
+
+// MOTION
+function bounce2(o) {
+    if ((o.x > w) || (o.x < 0)) {
+        o.x -= o.change.x;
+        o.change.x *= -1;
+        console.log('c1');
+    }
+    else if (o.y  > h || o.y < 0) {
+        o.y -= o.change.y;
+        o.change.y *= -1;
+        console.log('c2');
+    }
+}
+
+function growingTraceRect(o) {
+    if (o.x > o.boundary.right) {
+        o.x = o.boundary.right;
+        o.change.x = 0;
+        o.change.y = o.speed;
+        o.boundary.right += 10;
+        console.log('condition 1');
+    }
+    else if (o.y > o.boundary.bottom) {
+        o.y = o.boundary.bottom;
+        o.change.x = -o.speed;
+        o.change.y = 0;
+        o.boundary.bottom += 10;
+        console.log('condition 2');
+    }
+    else if (o.x < o.boundary.left){
+        o.x = o.boundary.left;
+        o.change.x = 0;
+        o.change.y = -o.speed;
+        o.boundary.left -= 10;
+        console.log('condition 3');
+    }
+    else if (o.y < o.boundary.top) {
+        o.y = o.boundary.top;
+        o.change.x = o.speed;
+        o.change.y = 0;
+        o.boundary.top -= 10;
+        console.log('condition 4');
+    }
+}
+
+function traceRect(o) {
+    if (o.x > w/4*3) {
+        o.x = w/4*3;
+        o.change.x = 0;
+        o.change.y = o.speed;
+        console.log('condition 1');
+    }
+    else if (o.y > h/4*3) {
+        o.y = h/4*3;
+        o.change.x = -o.speed;
+        o.change.y = 0;
+        console.log('condition 2');
+    }
+    else if (o.x < w/4){
+        o.x = w/4;
+        o.change.x = 0;
+        o.change.y = -o.speed;
+        console.log('condition 3');
+    }
+    else if (o.y < h/4) {
+        o.y = h/4;
+        o.change.x = o.speed;
+        o.change.y = 0;
+        console.log('condition 4');
+    }
+}
+
+function move(o) {
+    var cx = Math.cos(o.angle*oneDegree);
+    var cy = Math.sin(o.angle*oneDegree);
+    o.x += cx;
+    o.y += cy; 
+    o.angle += 1;
+}
+
+function bounce(o) {
+    if ((o.x > w) || (o.x < 0)) {
+        o.change.x *= -1;
+        // console.log('c1');
+    }
+    
+    if (o.y  > h || o.y < 0) {
+        o.change.y *= -1;
+        // console.log('c2');
+    }
+}
+
+function torus(o) {
+    if (o.x > w) {
+        o.x = 0;
+        // console.log('c1');
+    }
+    else if (o.x < 0) {
+        o.x = w;
+        // console.log('c2');
+    }
+    
+    if (o.y > h) {
+        o.y = 0;
+        // console.log('c3');
+    }
+    else if (o.y < 0) {
+        o.y = h;
+        // console.log('c4');
+    }
+}
+
+function horizontalLineOfShapes(o, num) {
+    for (var i = 0; i < num; i++) {
+        rect(o);
+        o.x += w/num+1;
+    }
+}
+
+// SHAPES
+function circle(o) {
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, o.r, 0, 2*Math.PI);
+    ctx.closePath();
+    ctx.fillStyle = "hsla("+o.c+", 100%, 50%, "+o.a+")";
+    ctx.fill();
+}
+
+function rect(o) {
+    var x = o.x;
+    var y = o.y;
+    o.x = o.x - o.w/2;
+    o.y = o.y - o.h/2;
+    ctx.beginPath();
+    ctx.moveTo(o.x + rand(o.random), o.y + rand(o.random));
+    ctx.lineTo(o.x + o.w + rand(o.random), o.y + rand(o.random));
+    ctx.lineTo(o.x + o.w + rand(o.random), o.y + o.h + rand(o.random));
+    ctx.lineTo(o.x + rand(o.random), o.y + o.h + rand(o.random));
+    ctx.closePath();
+    ctx.strokeStyle = "hsla("+o.c+", 100%, 50%, "+o.a+")";
+    ctx.lineWidth = o.lw;
+    ctx.stroke();
+    o.x = x;
+    o.y = y;
+}
+
+// CANVAS
+function setUpCanvas () {
+    canvas = document.querySelector("#myCanvas");
+    ctx = canvas.getContext("2d");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.border = "2px solid salmon";
+}
+
+function clear() {
+    ctx.clearRect(0, 0, w, h);
+}
+
+// RANDOMIZERS
+function rand (range) {
+    var result = Math.random() * range;
+    return result;
+}
+
+function randi (range) {
+    var floatResult = Math.random() * range;
+    var integerResult = Math.floor(floatResult);
+    if (integerResult == 0) {integerResult = 1}
+    return integerResult;
+}
+
+function randn (range) {
+    var r = Math.random() * range - range/2;
+    return r;
+}

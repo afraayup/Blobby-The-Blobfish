@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+
+<html>
+    
+    <head>
+        <link rel="stylesheet" type="text/css" href="a4.css">
+    </head>
+
+    <body>
+        <div id="container">
+            <h1> Assignment 4: Blobby the Blobfish :)</h1>
+            <p id = "instructions" ><b>Instructions</b> </p>
+            <p> Use the left and right arrow keys to move the blobfish left and right. Catch sea urchins to increase your score. If you crash into a jellyfish, you will lose a life, but if you click on a jellyfish you can gain a life. Use the spacebar to toggle between sad and happy modes. The game ends when you have lost all lives. Press the 'Restart' button below to restart the game. </p>
+            <p id="score"> Score: </p>
+            <p id="lives"> Lives: </p>
+
+            <button id="button"> Restart </button>
+            <br>
+
+            <canvas id="myCanvas">
+
+            </canvas>
+
+        </div>
+
+        <script src="a4.js"></script>
+
+        <div id="container"> 
+            <h2> Documentation </h2>
+            
+            <a href = "a4-1.js"> Initial Setup</a>
+            <p> Setup HTML, CSS, and Javascript file with global variables, code execution, and functions.</p>
+            
+            <a href = "a4-2.js"> Animation Setup </a>
+            <p> Setup functions for animation: animationLoop(), createData(), updateData(), deleteData(), setInterval(), setTimeout(). </p>
+
+            <a href = "a4-3.js"> User Interaction Setup </a>
+            <p> Setup functions for user interaction: .onclick(e), .onmousemove(e), .onkeydown(e). </p>
+
+            <a href = "a4-4.js"> Collision Detection Setup </a>
+            <p> Setup functions for collision detection: collision_rect(), collision_circle(), collision_all(), collisionRemove(). </p>
+
+            <a href = "a4-5.js"> Blobfish Object & Change Properties </a>
+            <p> Created shape drawer and object for blobfish. Included its change properties, which will be utilized for user interaction & collision detection. </p>
+
+            <a href = "a4-6.js"> Shape Drawers & Objects </a>
+            <p> Created shape drawers for game objects. Created blobfish, seaUrchin, jellyfish, star, and lightening shape drawers. </p>
+
+            <a href = "a4-7.js"> Animating Shapes </a>
+            <p> Created functions for animating shapes. Using create functions to create the data & shape drawers to draw onto canvas, update functions to change object properties, and delete functions to remove objects from canvas. </p>
+
+            <a href = "a4-8.js"> Events / User Interaction </a>
+            <p> Added functions for handling keyboard & mouse events to move blobfish around and change blobfish state. </p>
+
+            <a href = "a4-9.js"> Randomizing Sea Urchins & Jellyfishes </a>
+            <p> Randomized sea urchins and jellyfishes appearance/animation using setInterval() & setTimeout() and randomizing functions to add more objects. </p>
+
+            <a href = "a4-10.js"> Collision Detection between Blobfish & Sea Urchins / Jellyfishes </a>
+            <p> Added functions to detect collision between blobfish and sea urchins / jellyfishes: blobEat(), blobDie(). Removes object from array when collision detected: ate(), die().</p>
+            
+            <a href = "a4-11.js"> Score & Lives Counter (Closure & Module Pattern)</a>
+            <p> Implemented score & lives counter using closure. </p>
+            
+            <a href = "a4-12.js"> Fininshing Touches </a>
+            <p> Cleaned up logic & added functions to enhance gameplay. </p>
+
+            <h2> Citations </h2>
+            <a href = "https://www.w3schools.com/jsref/canvas_filltext.asp"> Canvas fillText() method </a>
+            <p> Used to display text onto canvas. Used for Game Over screen. </p>
+
+            <a href = "https://www.w3schools.com/jsref/prop_html_innerhtml.asp"> HTML DOM element .innerHTML </a>
+            <p> Changes the inner text inside an HTML DOM element. Used in the javascript file to update Score and Lives using document.getElementById</p>
+
+            <a href="blobfish.png"> Blobfish Drawing</a>
+            <p> My sketch of a blobfish. This was used to determine dimensions and properties for the blobfish shape drawer and updating functions.</p>
+
+            <a href="jellyfish.png"> Jellyfish Drawing</a>
+            <p> My sketch of a jellyfish. This was used to determine dimensions and properties for the jellyfish shape drawer and updating functions.</p>
+
+            
+        </div>"
+    </body>
+
+</html>
